@@ -1,0 +1,100 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lonely - Boutique en ligne</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'style/style1.css' %}" />
+    <link rel="stylesheet" href="{% static 'style/style.css' %}" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <div class="logo">LONELY</div>
+        <ul>
+          <li><a href="{% url 'index' %}">Nouveautés</a></li>
+          <li><a href="{% url 'produit' %}">Produit</a></li>
+          <li><a href="{% url 'panier' %}">Panier</a></li>
+          <li><a href="{% url 'commande' %}">Commande</a></li>
+          <li><a href="#apropos">À propos</a></li>
+        </ul>
+        <div class="icons">
+          <a href="{% url 'panier' %}">
+            <i class="fa-solid fa-cart-shopping"></i>
+          </a>
+          <div class="input-wrapper">
+            <button type="button" class="icon">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <input placeholder="search..." class="input" name="text" type="text">
+          </div>
+          <a href="{% url 'login' %}">
+            <i class="fa-solid fa-user"></i>
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="h">
+        <form method="post" action="{% url 'login' %}">
+          {% csrf_token %}
+          <p class="bien mb-4">BIENVENUE SUR LONELY</p>
+          <div class="form-floating mb-2">
+            <input type="email" class="form-control rounded-pill" id="floatingEmail" name="email" placeholder="Email">
+            <label for="floatingEmail">Email</label>
+          </div>
+          <div class="form-floating mb-2">
+            <input type="password" class="form-control rounded-pill" id="floatingPassword" name="password" placeholder="Password">
+            <label for="floatingPassword">Password</label>
+          </div>
+          <div class="rounded-pill ">
+                    <button class="btn btn-primary rounded-pill w-100" type="submit">Se Connecter</button>
+                </div>
+                <p class="text-center mt-3">En poursuivant, vous acceptez les <a href="">conditions d’utilisation</a>
+                    <br> de Pinterest
+                    et reconnaissez avoir lu
+                    <a href="">notre politique de confidentialité</a>. <br><a href=""> Informations concernant la
+                        collecte de données</a>.
+                </p>
+                <span>
+                    Vous n'etes pas encore inscrit? <a href="{% url 'register' %}">S'inscrire</a>
+                </span>
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+          
+        </form>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h4>Contact</h4>
+          <p>Email: kazalowilliam@gmail.com</p>
+          <p>Téléphone: +228 71 60 80 97</p>
+          <p>Téléphone: +228 99 25 85 70</p>
+        </div>
+        <div class="footer-section">
+          <h4>Suivez-nous</h4>
+          <p>Whatsapp</p>
+          <p>Facebook</p>
+        </div>
+      </div>
+      <p class="copyright">© {% now "Y" %} Lonely. Tous droits réservés.</p>
+    </footer>
+
+    <script src="{% static 'js/main.js' %}"></script>
+  </body>
+</html>
