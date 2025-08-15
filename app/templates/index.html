@@ -23,7 +23,12 @@
             <img src="{% static 'image/logo.png' %}" alt="Lonely Logo" style="width: 40px; height: 40px; object-fit: contain;">
             LONELY
         </div>
-        <ul>
+        <button class="menu-toggle" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <ul class="nav-links">
           <li><a href="#nouveautes">Nouveautés</a></li>
           <li><a href="{% url 'produit' %}">Produit</a></li>
           <li><a href="{% url 'panier' %}">Panier</a></li>
@@ -120,5 +125,6 @@
        
       <p class="copyright">© 2025 Lonely. Tous droits réservés.</p>
     </footer>
+    <script src="{% static 'js/nav.js' %}"></script>
   </body>
 </html>

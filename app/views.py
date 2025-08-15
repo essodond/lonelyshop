@@ -3,15 +3,18 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 
 from app.admin import ProductAdmin
-from .models import Product, Cart, CartItem, Order, OrderItem
+from .models import Product, Cart, CartItem, Order, OrderItem, Payment
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 
 # Product listing
 
 def product_list(request):
+    # Get all products with their descriptions and sizes
     products = Product.objects.all()
-    return render(request, 'Produit/produit.html', {'produits': products})
+    return render(request, 'Produit/produit.html', {
+        'produits': products,
+    })
 
 # Product detail
 
@@ -63,26 +66,141 @@ def place_order(request):
     items = cart.items.all()
     if not items:
         return redirect('panier')
-    order = Order.objects.create(user=request.user, total_price=0)
-    total = 0
+    
+    # Vérifier le stock disponible
     for item in items:
-        OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity, price=item.product.price)
-        total += item.product.price * item.quantity
-        # Update stock
-        item.product.stock -= item.quantity
-        item.product.save()
-    order.total_price = total
-    order.save()
-    # Clear cart
-    items.delete()
-    return redirect('commande')
+        if item.quantity > item.product.stock:
+            return render(request, 'Panier/panier.html', {
+                'items': items,
+                'total': sum(item.product.price * item.quantity for item in items),
+                'error': f'Stock insuffisant pour {item.product.name}. Stock disponible: {item.product.stock}'
+            })
+    
+    if request.method == 'POST':
+        payment_method = request.POST.get('payment_method')
+        if not payment_method:
+            return render(request, 'Panier/panier.html', {
+                'items': items,
+                'total': sum(item.product.price * item.quantity for item in items),
+                'error': 'Veuillez sélectionner une méthode de paiement'
+            })
+
+        try:
+            order = Order.objects.create(user=request.user, total_price=0)
+            total = 0
+            for item in items:
+                if item.quantity > item.product.stock:
+                    order.delete()
+                    return render(request, 'Panier/panier.html', {
+                        'items': items,
+                        'total': sum(item.product.price * item.quantity for item in items),
+                        'error': f'Stock insuffisant pour {item.product.name}. Stock disponible: {item.product.stock}'
+                    })
+                
+                OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity, price=item.product.price)
+                total += item.product.price * item.quantity
+                item.product.stock -= item.quantity
+                item.product.save()
+            
+            order.total_price = total
+            order.save()
+
+            # Créer le paiement
+            payment = Payment.objects.create(
+                order=order,
+                method=payment_method,
+                amount=total
+            )
+
+            # Si paiement mobile (Flooz ou Mixx)
+            if payment_method in ['FLOOZ', 'MIXX']:
+                phone_number = request.POST.get('phone_number')
+                if not phone_number:
+                    order.delete()
+                    return render(request, 'Panier/panier.html', {
+                        'items': items,
+                        'total': total,
+                        'error': 'Numéro de téléphone requis pour le paiement mobile'
+                    })
+                payment.phone_number = phone_number
+                payment.save()
+
+            # Si paiement par carte
+            elif payment_method == 'CARD':
+                card_number = request.POST.get('card_number')
+                card_expiry = request.POST.get('card_expiry')
+                card_cvv = request.POST.get('card_cvv')
+                
+                if not all([card_number, card_expiry, card_cvv]):
+                    order.delete()
+                    return render(request, 'Panier/panier.html', {
+                        'items': items,
+                        'total': total,
+                        'error': 'Informations de carte bancaire incomplètes'
+                    })
+                    
+                payment.card_number = card_number
+                payment.card_expiry = card_expiry
+                payment.card_cvv = card_cvv
+                payment.save()
+
+            # Clear cart
+            items.delete()
+            return redirect('commande')
+            
+        except Exception as e:
+            if order:
+                order.delete()
+            return render(request, 'Panier/panier.html', {
+                'items': items,
+                'total': sum(item.product.price * item.quantity for item in items),
+                'error': 'Une erreur est survenue lors du traitement de la commande'
+            })
+
+    return render(request, 'Panier/panier.html', {
+        'items': items,
+        'total': sum(item.product.price * item.quantity for item in items)
+    })
 
 # View orders
 
 @login_required
 def view_orders(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'Commande/commande.html', {'orders': orders})
+    
+    for order in orders:
+        order.items_count = order.items.count()
+        order.items_list = order.items.all()
+        
+        payment = Payment.objects.filter(order=order).first()
+        order.payment_info = payment
+        
+        # Statut
+        if payment and payment.status == 'COMPLETED':
+            order.status = 'Payée'
+            order.status_color = 'success'
+        else:
+            order.status = 'En attente'
+            order.status_color = 'warning'
+        
+        # Mode de paiement
+        order.mode_paiement = payment.method if payment else "N/A"
+
+        # Montant total
+        order.montant_total = sum(item.price * item.quantity for item in order.items_list)
+
+        # Numéro de commande
+        order.numero = order.id  # ou un champ unique si défini dans ton modèle
+
+        # Date de commande et livraison
+        order.date_commande = order.created_at
+        order.date_livraison = order.delivery_date if hasattr(order, 'delivery_date') else None
+
+    return render(request, 'Commande/commande.html', {
+        'commandes': orders,  # ⬅ On garde "commandes" pour correspondre au template
+        'total_orders': orders.count()
+    })
+
 
 # User login
 
@@ -90,12 +208,17 @@ def user_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        if not username or not password:
+            return render(request, 'conn/connect.html', {'error': 'Veuillez remplir tous les champs'})
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
             return redirect('index')
         else:
-            return render(request, 'conn/connect.html', {'error': 'Invalid credentials'})
+            return render(request, 'conn/connect.html', {'error': 'Nom d\'utilisateur ou mot de passe incorrect'})
     return render(request, 'conn/connect.html')
 
 # User logout
@@ -112,11 +235,23 @@ def user_register(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         email = request.POST.get('email')
+        
+        if not username or not password or not email:
+            return render(request, 'conn/inscript.html', {'error': 'Veuillez remplir tous les champs'})
+            
         if User.objects.filter(username=username).exists():
-            return render(request, 'conn/inscript.html', {'error': 'Username already exists'})
-        user = User.objects.create_user(username=username, password=password, email=email)
-        login(request, user)
-        return redirect('index')
+            return render(request, 'conn/inscript.html', {'error': 'Ce nom d\'utilisateur existe déjà'})
+            
+        if User.objects.filter(email=email).exists():
+            return render(request, 'conn/inscript.html', {'error': 'Cette adresse email est déjà utilisée'})
+            
+        try:
+            user = User.objects.create_user(username=username, password=password, email=email)
+            login(request, user)
+            return redirect('index')
+        except Exception as e:
+            return render(request, 'conn/inscript.html', {'error': 'Une erreur est survenue lors de l\'inscription'})
+            
     return render(request, 'conn/inscript.html')
 
 # Home page

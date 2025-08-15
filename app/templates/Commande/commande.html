@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{% static 'style/style1.css' %}" />
   <link rel="stylesheet" href="{% static 'style/style.css' %}" />
   <link rel="stylesheet" href="{% static 'style/styles.css' %}">
+  <link rel="icon" type="image/png" href="{% static 'image/logo.png' %}">
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -19,7 +20,10 @@
   <!-- Header -->
     <header>
     <nav>
-        <div class="logo">LONELY</div>
+        <div class="logo">
+            <img src="{% static 'image/logo.png' %}" alt="Lonely Logo" style="width: 40px; height: 40px; object-fit: contain;">
+            LONELY
+        </div>
         <ul>
             <li><a href="{% url 'index' %}">Nouveautés</a></li>
             <li><a href="{% url 'produit' %}">Produit</a></li>
@@ -57,43 +61,146 @@
     </header>
 
   <!-- Section Historique des commandes -->
-  <section class="container my-5">
-    <div class="card shadow-sm">
-      <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">Historique des commandes</h5>
+<section class="container my-5">
+  <style>
+    .notification-list {
+      max-width: 10000px;
+      margin: 0 auto;
+    }
+    .notification-item {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transform: translateY(20px);
+      opacity: 0;
+      animation: slideIn 0.3s ease forwards;
+      transition: all 0.3s ease;
+    }
+    .notification-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      background: rgba(255, 255, 255, 1);
+    }
+    @keyframes slideIn {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .notification-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1a1a1a;
+      transition: color 0.3s ease;
+    }
+    .notification-item:hover .notification-title {
+      color: #4285f4;
+    }
+    .notification-time {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .notification-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .notification-status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      transition: transform 0.3s ease;
+    }
+    .notification-item:hover .notification-status {
+      transform: scale(1.05);
+    }
+    .notification-details {
+      margin-top: 10px;
+      display: flex;
+      gap: 15px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .notification-details a {
+      transition: transform 0.3s ease;
+    }
+    .notification-details a:hover {
+      transform: translateX(5px);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .empty-state:hover {
+      transform: scale(1.02);
+    }
+    .empty-state .btn {
+      transition: all 0.3s ease;
+    }
+    .empty-state .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+  </style>
+
+  <div class="notification-list">
+    <h3 class="mb-4 text-center">Mes Commandes <span class="badge bg-primary">{{ commandes.count }}</span></h3>
+    
+    {% for commande in commandes %}
+    <div class="notification-item" style="animation-delay: {{ forloop.counter0 }}00ms">
+      <div class="notification-header">
+        <span class="notification-title">#{{ commande.numero }}</span>
+        <span class="notification-time">
+          <i class="fa-regular fa-clock"></i> 
+          {{ commande.date_commande|date:"d/m/Y H:i" }}
+        </span>
       </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-dark">
-            <tr>
-              <th>N° Commande</th>
-              <th>Montant Total</th>
-              <th>Statut</th>
-              <th>Paiement</th>
-              <th>Livraison</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for commande in commandes %}
-            <tr>
-              <td>#{{ commande.numero }}</td>
-              <td class="fw-bold">{{ commande.montant_total }} Fcfa</td>
-              <td><span class="badge bg-{{ commande.status_color }} {% if commande.status == 'en cours' %}text-dark{% endif %}">{{ commande.status }}</span></td>
-              <td><i class="fa-solid fa-credit-card me-1"></i> {{ commande.mode_paiement }}</td>
-              <td><i class="fa-solid fa-calendar-days me-1"></i> {{ commande.date_livraison|date:"d/m/Y" }}</td>
-              <td><a href="{% url 'detail_commande' commande.id %}" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-eye"></i></a></td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="6" class="text-center">Aucune commande trouvée</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      
+      <div class="notification-content">
+        <div class="fw-bold">{{ commande.montant_total }} Fcfa</div>
+        <span class="notification-status" style="background-color: {% if commande.status == 'en cours' %}#ffd700{% elif commande.status == 'livré' %}#90EE90{% else %}#ff6b6b{% endif %}; color: #000;">
+          <i class="fa-solid fa-circle-notch {% if commande.status == 'en cours' %}fa-spin{% endif %}"></i>
+          {{ commande.status }}
+        </span>
+      </div>
+
+      <div class="notification-details">
+        <span>
+          <i class="fa-solid fa-credit-card"></i> 
+          {{ commande.mode_paiement }}
+        </span>
+        <span>
+          <i class="fa-solid fa-truck"></i>
+          {{ commande.date_livraison|date:"d/m/Y" }}
+        </span>
+        <a href="#" class="text-primary">
+          <i class="fa-solid fa-chevron-right"></i>
+        </a>
       </div>
     </div>
-  </section>
+    {% empty %}
+    <div class="empty-state">
+      <i class="fa-solid fa-shopping-cart fa-3x mb-3 text-muted"></i>
+      <p class="text-muted">Vous n'avez pas encore passé de commande</p>
+      <a href="{% url 'produit' %}" class="btn btn-primary rounded-pill">
+        <i class="fa-solid fa-store me-1"></i> Découvrir nos produits
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
 
 </body>
 </html>
